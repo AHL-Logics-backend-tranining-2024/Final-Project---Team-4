@@ -1,9 +1,10 @@
 from datetime import date, datetime
 import re
 from uuid import UUID
-from pydantic import BaseModel , ValidationError,Field, field_validator , BaseSettings
+from pydantic import BaseModel, EmailStr , ValidationError,Field, field_validator 
+from pydantic_settings import BaseSettings
 
-
+# **************** Auth Models ***************
 
 class Token(BaseModel):
     access_token: str
@@ -15,46 +16,63 @@ class TokenData(BaseModel):
 
 class User(BaseModel):
     username: str
-    email: str | None = None
+    email: EmailStr 
     full_name: str | None = None
-    disabled: bool | None = None
+    is_active: bool = Field(default= True)
+    is_admin : bool = Field(default= False)
 
 class UserInDB(User):
     hashed_password: str
 
+
+class Settings(BaseSettings):
+    secret_key: str
+    algorithm: str 
+    access_token_expire_minutes: int   
+
+    class Config:
+        env_file = ".env"  
+
+
+# ******************* User Models *******************
+
+def validate_password(value: str) -> str:
+    errors = []
+    if len(value) < 8:
+        errors.append("Password must be at least 8 characters long.")
+    if not re.search(r"[a-z]", value):
+        errors.append("Password must include at least one lowercase letter.")
+    if not re.search(r"[A-Z]", value):
+        errors.append("Password must include at least one uppercase letter.")
+    if not re.search(r"\d", value):
+        errors.append("Password must include at least one number.")
+    if not re.search(r"[@$!%*?&]", value):
+        errors.append("Password must include at least one special character.")
+
+    if errors:
+        raise ValueError(" ".join(errors))
+    return value
+
+
 class CreateUserRequest(BaseModel):
     username: str 
-    email: str 
+    email: EmailStr 
     password: str = Field(...)
 
     @field_validator('password')
-    def validate_password(cls, value):
-        errors = []
-        if len(value) < 8:
-            errors.append("Password must be at least 8 characters long.")
-        if not re.search(r"[a-z]", value):
-            errors.append("Password must include at least one lowercase letter.")
-        if not re.search(r"[A-Z]", value):
-            errors.append("Password must include at least one uppercase letter.")
-        if not re.search(r"\d", value):
-            errors.append("Password must include at least one number.")
-        if not re.search(r"[@$!%*?&]", value):
-            errors.append("Password must include at least one special character.")
+    def validate_password_field(cls, value):
+        return validate_password(value)
 
-        if errors:
-            raise ValueError(" ".join(errors))
-        return value
-
+   
 
 class CreateUserResponse(BaseModel):
     id : UUID
     username: str 
-    email: str 
+    email: EmailStr 
     is_admin : bool
     is_active: bool
     created_at: datetime
 
-    
     @field_validator('created_at')
     def validate_datetime(cls, value):
             try:
@@ -74,10 +92,15 @@ class UserdetailsResponse(CreateUserResponse):
                 raise ValueError('Date-time must be in the format YYYY-MM-DD HH:MM:SS')
             return value  
     
-class Settings(BaseSettings):
-    secret_key: str
-    algorithm: str 
-    access_token_expire_minutes: int   
+class UpdateUserRequest(BaseModel):
+    username: str | None = None
+    email: EmailStr  | None = None
+    password: str = Field(None) 
 
-    class Config:
-        env_file = ".env"  
+
+    @field_validator('password')
+    def validate_password_field(cls, value):
+         # Only validate if a password is provided
+        if value: 
+            return validate_password(value)
+        return None 
