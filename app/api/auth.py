@@ -2,13 +2,12 @@ from uuid import UUID
 from fastapi import APIRouter
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
-from app.models import Settings, User , Token , TokenData, UserInDB
+from app.models import Settings , Token , TokenData, User, UserInDB
 import jwt
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm 
 from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
-
 
 
 router = APIRouter()
@@ -20,10 +19,23 @@ fake_users_db = {
         "full_name": "John Doe",
         "email": "johndoe@example.com",
         "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "is_active": False,
+        "is_active": True,
         "is_admin": False,
+        "created_at": "2024-09-01 10:00:00",
+        "updated_at": "2024-09-01 12:00:00",
+    },
+    UUID("223e4567-e89b-12d3-a456-426614174001"): {
+        "user_id": UUID("223e4567-e89b-12d3-a456-426614174001"),
+        "username": "adminuser",
+        "full_name": "Admin User",
+        "email": "admin@example.com",
+        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
+        "is_active": True,
+        "is_admin": True,
+        "created_at": "2024-09-02 11:00:00",
+        "updated_at": "2024-09-02 14:00:00",
+    },
     }
-}
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -96,10 +108,10 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 async def get_current_admin(
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    if current_user.is_admin == False:
+    if not current_user['is_admin']:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions",
+            detail="Not enough permissions"
         )
     return current_user
 
@@ -111,4 +123,3 @@ async def get_current_active_user(
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
-
