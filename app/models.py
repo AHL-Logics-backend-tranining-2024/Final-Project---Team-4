@@ -23,6 +23,7 @@ class User(BaseModel):
     is_admin : bool = Field(default= False)
 
 class UserInDB(User):
+    user_id : UUID
     hashed_password: str
 
 
