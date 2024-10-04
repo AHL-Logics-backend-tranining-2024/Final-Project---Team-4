@@ -12,6 +12,8 @@ from passlib.context import CryptContext
 
 router = APIRouter()
 
+settings = Settings()
+
 fake_users_db = {
     UUID("123e4567-e89b-12d3-a456-426614174000"): {
         "user_id": UUID("123e4567-e89b-12d3-a456-426614174000"),
@@ -64,7 +66,7 @@ def get_user(db, identifier: str | UUID):
     return None
 
 
-def authenticate_user(fake_db, username: str, password: str):
+async def authenticate_user(fake_db, username: str, password: str):
     user = get_user(fake_db, username)
     if not user:
         return False
@@ -80,7 +82,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     else:
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, Settings.secret_key, algorithm=Settings.algorithm)
+    encoded_jwt = jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
     return encoded_jwt
 
 
@@ -91,14 +93,16 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, Settings.secret_key, algorithms=[Settings.algorithm])
-        user_id: UUID = payload.get("sub")
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        user_id = UUID(payload.get("sub"))
         if user_id is None:
             raise credentials_exception
         token_data = TokenData(user_id=user_id)
     except InvalidTokenError:
         raise credentials_exception
-    user = get_user(fake_users_db, user_id=token_data.user_id)
+    except jwt.ExpiredSignatureError:
+         raise HTTPException(status_code=401, detail="Token has expired")
+    user = await get_user(fake_users_db, user_id=token_data.user_id)
     if user is None:
         raise credentials_exception
     return user
@@ -108,7 +112,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 async def get_current_admin(
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    if not current_user['is_admin']:
+    if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"

@@ -28,9 +28,9 @@ class UserInDB(User):
 
 
 class Settings(BaseSettings):
-    secret_key: str
-    algorithm: str 
-    access_token_expire_minutes: int   
+    secret_key: str = Field(..., env="SECRET_KEY")
+    algorithm: str = Field("HS256", env="ALGORITHM")
+    access_token_expire_minutes: int = Field(30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
 
     class Config:
-        env_file = ".env"  
+        env_file = ".env"

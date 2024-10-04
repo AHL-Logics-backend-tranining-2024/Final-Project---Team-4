@@ -8,9 +8,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.api.auth import  authenticate_user, create_access_token
 from app.api.routes import status
 from app.models import Settings, Token
+from jwt import PyJWTError
+
 
 
 router = APIRouter()
+
+settings = Settings()
 
 fake_users_db = {
     UUID("123e4567-e89b-12d3-a456-426614174000"): {
@@ -23,20 +27,32 @@ fake_users_db = {
         "is_admin": False,
     }
 }
+
 @router.post("/login")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
-    if not user:
+    try:
+        user = await authenticate_user(fake_users_db, form_data.username, form_data.password)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+        access_token = create_access_token(
+            data={"sub": str(user.user_id)}, expires_delta=access_token_expires)
+        
+        return Token(access_token=access_token, token_type="bearer")
+    except PyJWTError as e:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Token generation error: {str(e)}"
+        ) 
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred: {str(e)}"
         )
-    access_token_expires = timedelta(minutes= Settings.access_token_expire_minutes)
-    access_token = create_access_token(
-            data={"sub": str(user.user_id)} , expires_delta=access_token_expires
-    )
-    return Token(access_token=access_token, token_type="bearer")
-
