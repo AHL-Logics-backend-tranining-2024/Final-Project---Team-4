@@ -1,5 +1,4 @@
 from datetime import date, datetime
-import re
 from uuid import UUID
 from pydantic import BaseModel, EmailStr , ValidationError,Field, field_validator 
 from pydantic_settings import BaseSettings
@@ -17,10 +16,11 @@ class TokenData(BaseModel):
 
 class User(BaseModel):
     username: str
-    email: EmailStr 
-    full_name: str | None = None
+    email: EmailStr | None = None
     is_active: bool = Field(default= True)
     is_admin : bool = Field(default= False)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
 class UserInDB(User):
     user_id : UUID

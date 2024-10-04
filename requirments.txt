@@ -1,5 +1,6 @@
 fastapi[standard]==0.115.0
-pyjwt==2.4.0
-pydantic-settings==0.2.0
-passlib==1.7.4
-uvicorn==0.22.0
+pyjwt
+pydantic-settings
+passlib
+uvicorn
+python-jose[cryptography]

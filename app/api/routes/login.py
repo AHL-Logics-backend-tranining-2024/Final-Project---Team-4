@@ -23,10 +23,24 @@ fake_users_db = {
         "full_name": "John Doe",
         "email": "johndoe@example.com",
         "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "is_active": False,
+        "is_active": True,
         "is_admin": False,
+        "created_at": "2024-09-01 10:00:00",
+        "updated_at": "2024-09-01 12:00:00",
+    },
+    UUID("223e4567-e89b-12d3-a456-426614174001"): {
+        "user_id": UUID("223e4567-e89b-12d3-a456-426614174001"),
+        "username": "adminuser",
+        "full_name": "Admin User",
+        "email": "admin@example.com",
+        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
+        "is_active": True,
+        "is_admin": True,
+        "created_at": "2024-09-02 11:00:00",
+        "updated_at": "2024-09-02 14:00:00",
+    },
     }
-}
+
 
 @router.post("/login")
 async def login_for_access_token(

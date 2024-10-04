@@ -3,10 +3,9 @@ from fastapi import APIRouter
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from app.models import Settings , Token , TokenData, User, UserInDB
-import jwt
-from fastapi import Depends, FastAPI, HTTPException, status
+from jose import jwt , JWSError
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm 
-from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 
 
@@ -98,10 +97,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         if user_id is None:
             raise credentials_exception
         token_data = TokenData(user_id=user_id)
-    except InvalidTokenError:
+    except JWSError:
         raise credentials_exception
-    except jwt.ExpiredSignatureError:
-         raise HTTPException(status_code=401, detail="Token has expired")
     user = await get_user(fake_users_db, user_id=token_data.user_id)
     if user is None:
         raise credentials_exception
