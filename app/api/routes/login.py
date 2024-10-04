@@ -1,5 +1,3 @@
-
-
 from datetime import timedelta
 from typing import Annotated
 from uuid import UUID
@@ -8,7 +6,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from app.api.auth import  authenticate_user, create_access_token
 from app.api.routes import status
 from app.models import Settings, Token
-from jwt import PyJWTError
+from jose import jwt , JWTError
 
 
 
@@ -60,7 +58,7 @@ async def login_for_access_token(
             data={"sub": str(user.user_id)}, expires_delta=access_token_expires)
         
         return Token(access_token=access_token, token_type="bearer")
-    except PyJWTError as e:
+    except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Token generation error: {str(e)}"

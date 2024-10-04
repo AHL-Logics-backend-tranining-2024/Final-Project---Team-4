@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from app.models import Settings , Token , TokenData, User, UserInDB
-from jose import jwt , JWSError
+from jose import jwt , JWTError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm 
 from passlib.context import CryptContext
@@ -97,7 +97,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         if user_id is None:
             raise credentials_exception
         token_data = TokenData(user_id=user_id)
-    except JWSError:
+    except JWTError:
         raise credentials_exception
     user = await get_user(fake_users_db, user_id=token_data.user_id)
     if user is None:
