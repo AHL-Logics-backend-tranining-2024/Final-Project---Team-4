@@ -86,22 +86,35 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    credentials_exception = HTTPException(
+    
+    try:
+        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        user_id = UUID(payload.get("sub"))
+        exp_timestamp = payload.get("exp")
+        if not user_id  or not exp_timestamp:
+            raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid authentication credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+        exp_datetime = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc) 
+        if exp_datetime < datetime.now(timezone.utc):
+            raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED, 
+                    detail="Token has expired", 
+                    headers={"WWW-Authenticate": "Bearer"}, )
+
+    except (JWTError, ValueError):
+        raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
-        user_id = UUID(payload.get("sub"))
-        if user_id is None:
-            raise credentials_exception
-        token_data = TokenData(user_id=user_id)
-    except JWTError:
-        raise credentials_exception
-    user = await get_user(fake_users_db, user_id=token_data.user_id)
+    user = await get_user(fake_users_db, user_id=user_id)
     if user is None:
-        raise credentials_exception
+       raise HTTPException(status_code=404, detail="User not found") 
+    if not user.is_active :
+        raise HTTPException(status_code=400, detail="Inactive user")
     return user
 
 
@@ -114,13 +127,4 @@ async def get_current_admin(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    return current_user
-
-
-
-async def get_current_active_user(
-    current_user: Annotated[User, Depends(get_current_user)],
-):
-    if not current_user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
