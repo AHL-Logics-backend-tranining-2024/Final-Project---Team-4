@@ -34,3 +34,15 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
+
+    _instance = None 
+
+    # This method implements the Singleton pattern.
+    # It ensures that only one instance of the Settings class is created and reused
+    # throughout the application, preventing the reloading of environment variables
+    # multiple times
+    @staticmethod
+    def get_instance():
+        if Settings._instance is None:
+            Settings._instance = Settings()  
+        return Settings._instance 

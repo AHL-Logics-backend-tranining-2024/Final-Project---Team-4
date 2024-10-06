@@ -11,7 +11,7 @@ from passlib.context import CryptContext
 
 router = APIRouter()
 
-settings = Settings()
+settings = Settings.get_instance()
 
 fake_users_db = {
     UUID("123e4567-e89b-12d3-a456-426614174000"): {
