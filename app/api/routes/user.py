@@ -3,11 +3,11 @@ from typing import List
 from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.api.auth import get_current_admin, get_password_hash, get_user
-from app.api.routes.login import get_current_user
+from app.api.auth import get_current_admin, get_current_user, get_password_hash, get_user
 from app.models import (
     CreateUserRequest,
     CreateUserResponse,
+    UpdateUserDetailsResponse,
     UpdateUserRequest,
     GetUserDetailsResponse,
     User,
@@ -48,7 +48,7 @@ fake_users_db = {
     status_code=status.HTTP_200_OK,
 )
 async def get_all_users(
-    current_admin: Depends(get_current_admin), skip: int = 0, limit: int = 10
+    current_admin: User = Depends(get_current_admin), skip: int = 0, limit: int = 10
 ):
     try:
         # Extract user details for the response
@@ -98,7 +98,7 @@ def create_user(user: CreateUserRequest):
             hashed_password=hashed_password,
             is_admin=False,
             is_active=True,
-            created_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            created_at=datetime.now(),
             updated_at=None,
         )
         fake_users_db[user_id] = new_user.__dict__
@@ -111,6 +111,7 @@ def create_user(user: CreateUserRequest):
             created_at=new_user.created_at,
         )
     except Exception as e:
+        print("An error occurred while creating user:", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred",

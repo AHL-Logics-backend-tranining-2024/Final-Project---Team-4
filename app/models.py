@@ -23,7 +23,7 @@ class User(BaseModel):
     is_active: bool = Field(default=True)
     is_admin: bool = Field(default=False)
     created_at: datetime
-    updated_at: datetime
+    updated_at: datetime | None = None
     hashed_password: str
 
 
@@ -86,26 +86,11 @@ class CreateUserResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-    @field_validator("created_at")
-    def validate_datetime(cls, value):
-        try:
-            datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            raise ValueError("Date-time must be in the format YYYY-MM-DD HH:MM:SS")
-        return value
-
 
 class GetUserDetailsResponse(CreateUserResponse):
     updated_at: datetime
     links: List[Dict[str, str]] = []  # HATEOAS links
 
-    @field_validator("updated_at")
-    def validate_datetime(cls, value):
-        try:
-            datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            raise ValueError("Date-time must be in the format YYYY-MM-DD HH:MM:SS")
-        return value
 
     @classmethod
     def create_hateoas_links(cls, user_id: UUID):
@@ -119,14 +104,6 @@ class GetUserDetailsResponse(CreateUserResponse):
 class UpdateUserDetailsResponse(CreateUserResponse):
     updated_at: datetime
     links: List[Dict[str, str]] = []  # HATEOAS links
-
-    @field_validator("updated_at")
-    def validate_datetime(cls, value):
-        try:
-            datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            raise ValueError("Date-time must be in the format YYYY-MM-DD HH:MM:SS")
-        return value
 
     @classmethod
     def create_hateoas_links(cls, user_id: UUID):

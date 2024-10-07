@@ -1,1 +1,1 @@
-from .main import app
+from app.api.main import api_router
