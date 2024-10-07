@@ -3,11 +3,10 @@ from typing import Annotated
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
-from app.api.auth import  authenticate_user, create_access_token
+from app.api.auth import authenticate_user, create_access_token
 from app.api.routes import status
 from app.models import Settings, Token
-from jose import jwt , JWTError
-
+from jose import jwt, JWTError
 
 
 router = APIRouter()
@@ -37,7 +36,7 @@ fake_users_db = {
         "created_at": "2024-09-02 11:00:00",
         "updated_at": "2024-09-02 14:00:00",
     },
-    }
+}
 
 
 @router.post("/login")
@@ -45,26 +44,29 @@ async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
     try:
-        user = await authenticate_user(fake_users_db, form_data.username, form_data.password)
+        user = await authenticate_user(
+            fake_users_db, form_data.username, form_data.password
+        )
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
         access_token = create_access_token(
-            data={"sub": str(user.user_id)}, expires_delta=access_token_expires)
-        
+            data={"sub": str(user.user_id)}, expires_delta=access_token_expires
+        )
+
         return Token(access_token=access_token, token_type="bearer")
     except JWTError as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Token generation error: {str(e)}"
-        ) 
+            detail=f"Token generation error: {str(e)}",
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"An unexpected error occurred: {str(e)}"
+            detail=f"An unexpected error occurred: {str(e)}",
         )
