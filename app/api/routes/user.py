@@ -1,8 +1,8 @@
-from fastapi import APIRouter
+from datetime import datetime
+from uuid import UUID, uuid4
+from fastapi import APIRouter, HTTPException
+
+from app.api.routes.login import get_current_user
+from app.models import CreateUserRequest, CreateUserResponse, UserdetailsResponse
 
 router = APIRouter()
-
-# make sure to remove this function
-@router.get("/example")
-def example():
-    return {"message": "this is an example"}
