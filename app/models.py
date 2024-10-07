@@ -1,4 +1,6 @@
 from datetime import date, datetime
+import re
+from typing import Dict, List
 from uuid import UUID
 from pydantic import BaseModel, EmailStr, ValidationError, Field, field_validator
 from pydantic_settings import BaseSettings
@@ -15,18 +17,15 @@ class TokenData(BaseModel):
 
 
 class User(BaseModel):
+    user_id: UUID
     username: str
-    email: EmailStr | None = None
+    email: EmailStr
     is_active: bool = Field(default=True)
     is_admin: bool = Field(default=False)
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-
-
-class UserInDB(User):
-    user_id: UUID
+    created_at: datetime
+    updated_at: datetime
     hashed_password: str
-    
+
 
 class Settings(BaseSettings):
     secret_key: str = Field(..., env="SECRET_KEY")
@@ -34,7 +33,7 @@ class Settings(BaseSettings):
 
     class Config:
         env_file = ".env"
-    
+
     _instance = None
 
     # This method implements the Singleton pattern.
@@ -48,9 +47,8 @@ class Settings(BaseSettings):
         return Settings._instance
 
 
-
-
 # ******************* User Models *******************
+
 
 def validate_password(value: str) -> str:
     errors = []
@@ -71,54 +69,82 @@ def validate_password(value: str) -> str:
 
 
 class CreateUserRequest(BaseModel):
-    username: str 
-    email: EmailStr 
+    username: str
+    email: EmailStr
     password: str = Field(...)
 
-    @field_validator('password')
+    @field_validator("password")
     def validate_password_field(cls, value):
         return validate_password(value)
 
-   
 
 class CreateUserResponse(BaseModel):
-    id : UUID
-    username: str 
-    email: EmailStr 
-    is_admin : bool
+    id: UUID
+    username: str
+    email: EmailStr
+    is_admin: bool
     is_active: bool
     created_at: datetime
 
-    @field_validator('created_at')
+    @field_validator("created_at")
     def validate_datetime(cls, value):
-            try:
-                datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
-            except ValueError:
-                raise ValueError('Date-time must be in the format YYYY-MM-DD HH:MM:SS')
-            return value  
-          
-class UserdetailsResponse(CreateUserResponse):
-    updated_at :datetime
+        try:
+            datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            raise ValueError("Date-time must be in the format YYYY-MM-DD HH:MM:SS")
+        return value
 
-    @field_validator('updated_at')
+
+class GetUserDetailsResponse(CreateUserResponse):
+    updated_at: datetime
+    links: List[Dict[str, str]] = []  # HATEOAS links
+
+    @field_validator("updated_at")
     def validate_datetime(cls, value):
-            try:
-                datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
-            except ValueError:
-                raise ValueError('Date-time must be in the format YYYY-MM-DD HH:MM:SS')
-            return value  
-    
+        try:
+            datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            raise ValueError("Date-time must be in the format YYYY-MM-DD HH:MM:SS")
+        return value
+
+    @classmethod
+    def create_hateoas_links(cls, user_id: UUID):
+        return [
+            {"rel": "self", "href": f"/users/{user_id}"},
+            {"rel": "update", "href": f"/users/{user_id}"},
+            {"rel": "delete", "href": f"/users/{user_id}"},
+        ]
+
+
+class UpdateUserDetailsResponse(CreateUserResponse):
+    updated_at: datetime
+    links: List[Dict[str, str]] = []  # HATEOAS links
+
+    @field_validator("updated_at")
+    def validate_datetime(cls, value):
+        try:
+            datetime.strptime(value, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            raise ValueError("Date-time must be in the format YYYY-MM-DD HH:MM:SS")
+        return value
+
+    @classmethod
+    def create_hateoas_links(cls, user_id: UUID):
+        return [
+            {"rel": "self", "href": f"/users/{user_id}"},
+            {"rel": "get", "href": f"/users/{user_id}"},
+            {"rel": "delete", "href": f"/users/{user_id}"},
+        ]
+
+
 class UpdateUserRequest(BaseModel):
     username: str | None = None
-    email: EmailStr  | None = None
-    password: str = Field(None) 
+    email: EmailStr | None = None
+    password: str = Field(None)
 
-
-    @field_validator('password')
+    @field_validator("password")
     def validate_password_field(cls, value):
-         # Only validate if a password is provided
-        if value: 
+        # Only validate if a password is provided
+        if value:
             return validate_password(value)
-        return None 
-
- 
+        return None
