@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 
 from app.api.auth import get_current_admin, get_current_user, get_password_hash, get_user
 from app.models import (
+    ChangeRoleRequest,
     CreateUserRequest,
     CreateUserResponse,
     UpdateUserDetailsResponse,
@@ -42,8 +43,7 @@ fake_users_db = {
 
 
 # Get All Users Endpoint
-@router.get(
-    "/users/",
+@router.get("",
     response_model=List[GetUserDetailsResponse],
     status_code=status.HTTP_200_OK,
 )
@@ -53,6 +53,7 @@ async def get_all_users(
     try:
         # Extract user details for the response
         users = [
+
             {
                 "id": user["user_id"],
                 "username": user["username"],
@@ -61,6 +62,7 @@ async def get_all_users(
                 "is_active": user["is_active"],
                 "created_at": user["created_at"],
                 "updated_at": user["updated_at"],
+                "links": GetUserDetailsResponse.create_hateoas_links(user["user_id"])
             }
             for user in fake_users_db.values()
         ]
@@ -75,9 +77,7 @@ async def get_all_users(
 
 
 #  create user
-@router.post(
-    "/users/", response_model=CreateUserResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("", response_model=CreateUserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: CreateUserRequest):
     try:
         # Check if the email is already registered
@@ -119,7 +119,7 @@ def create_user(user: CreateUserRequest):
 
 
 # get user details
-@router.get("/users/{user_id}", response_model=GetUserDetailsResponse)
+@router.get("/{user_id}", response_model=GetUserDetailsResponse)
 def get_user_details(user_id: UUID, current_user: User = Depends(get_current_user)):
     # Let the user access if they are an admin, otherwise only allow access to their own resource
     if current_user.user_id != user_id and not current_user.get("is_admin", False):
@@ -152,8 +152,28 @@ def get_user_details(user_id: UUID, current_user: User = Depends(get_current_use
         )
 
 
+# allows administrators to update the role of a user
+@router.put("/change_role", status_code=status.HTTP_200_OK)
+def change_user_role(
+    change_role_data: ChangeRoleRequest, 
+    current_admin: User = Depends(get_current_admin)
+):
+    try:
+        user_to_change = get_user(fake_users_db, change_role_data.id)
+        if not user_to_change:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="user not found"
+            )
+        user_to_change.is_admin = change_role_data.is_admin
+        return {"message": "User role updated successfully."}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error updating user role.",
+        )
+    
 # to update user info
-@router.put("/users/{user_id}", response_model=UpdateUserDetailsResponse)
+@router.put("/{user_id}", response_model=UpdateUserDetailsResponse)
 def update_user(
     user_id: UUID,
     update_data: UpdateUserRequest,
@@ -186,27 +206,18 @@ def update_user(
     fake_users_db[user_id] = current_user.__dict__
     links = UpdateUserDetailsResponse.create_hateoas_links(user_id)
 
-    return UpdateUserDetailsResponse(**current_user.__dict__, links=links)
-
-
-# allows administrators to update the role of a user
-@router.put("/users/change_role", status_code=status.HTTP_200_OK)
-def change_user_role(
-    user_id: UUID, is_admin: bool, current_admin: User = Depends(get_current_admin)
-):
-    try:
-        user_to_change = get_user(fake_users_db, user_id)
-        if not user_to_change:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="user not found"
-            )
-        user_to_change.is_admin = is_admin
-        return {"message": "User role updated successfully."}
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error updating user role.",
+    return UpdateUserDetailsResponse(
+            id=current_user.user_id,  # Include the ID explicitly
+            username=current_user.username,
+            email=current_user.email,
+            is_admin=current_user.is_admin,
+            is_active=current_user.is_active,
+            created_at=current_user.created_at,
+            updated_at=current_user.updated_at,
+            links=links
         )
+
+
 
 
 #    List Orders for User Endpoint  --------------------> to be implemented

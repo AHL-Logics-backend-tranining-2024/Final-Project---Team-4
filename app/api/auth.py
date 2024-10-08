@@ -115,7 +115,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user = await get_user(fake_users_db, user_id=user_id)
+    user = get_user(fake_users_db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     if not user.is_active:

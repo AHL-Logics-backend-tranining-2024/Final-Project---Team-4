@@ -39,7 +39,7 @@ fake_users_db = {
 }
 
 
-@router.post("/login")
+@router.post("")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
 ) -> Token:
@@ -57,7 +57,7 @@ async def login_for_access_token(
         # Check the expiration time setting
         print("Access token expiration minutes:", settings.access_token_expire_minutes)
 
-        access_token_expires = timedelta(minutes=30)
+        access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
         print("Access token expires in:", access_token_expires)
 
         access_token = create_access_token(

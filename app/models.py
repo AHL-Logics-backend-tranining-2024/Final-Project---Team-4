@@ -1,6 +1,6 @@
 from datetime import date, datetime
 import re
-from typing import Dict, List
+from typing import ClassVar, Dict, List
 from uuid import UUID
 from pydantic import BaseModel, EmailStr, ValidationError, Field, field_validator
 from pydantic_settings import BaseSettings
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
 
-    _instance = None
+    _instance: ClassVar = None
 
     # This method implements the Singleton pattern.
     # It ensures that only one instance of the Settings class is created and reused
@@ -95,9 +95,9 @@ class GetUserDetailsResponse(CreateUserResponse):
     @classmethod
     def create_hateoas_links(cls, user_id: UUID):
         return [
-            {"rel": "self", "href": f"/users/{user_id}"},
-            {"rel": "update", "href": f"/users/{user_id}"},
-            {"rel": "delete", "href": f"/users/{user_id}"},
+            {"rel": "self", "href": f"api/v1/users/{user_id}"},
+            {"rel": "update", "href": f"api/v1/users/{user_id}"},
+            {"rel": "delete", "href": f"api/v1/users/{user_id}"},
         ]
 
 
@@ -108,9 +108,9 @@ class UpdateUserDetailsResponse(CreateUserResponse):
     @classmethod
     def create_hateoas_links(cls, user_id: UUID):
         return [
-            {"rel": "self", "href": f"/users/{user_id}"},
-            {"rel": "get", "href": f"/users/{user_id}"},
-            {"rel": "delete", "href": f"/users/{user_id}"},
+            {"rel": "self", "href": f"api/v1/users/{user_id}"},
+            {"rel": "get", "href": f"api/v1/users/{user_id}"},
+            {"rel": "delete", "href": f"api/v1/users/{user_id}"},
         ]
 
 
@@ -125,3 +125,7 @@ class UpdateUserRequest(BaseModel):
         if value:
             return validate_password(value)
         return None
+
+class ChangeRoleRequest(BaseModel):
+    id : UUID
+    is_admin: bool
