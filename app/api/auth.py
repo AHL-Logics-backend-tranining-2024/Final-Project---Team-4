@@ -2,7 +2,7 @@ from uuid import UUID
 from fastapi import APIRouter
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
-from app.models import Settings, Token, TokenData, User, UserInDB
+from app.models import Settings, Token, TokenData, User
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -58,12 +58,12 @@ def get_user(db, identifier: str | UUID):
     if isinstance(identifier, UUID):
         for user in db.values():
             if user["user_id"] == identifier:
-                return UserInDB(**user)
+                return User(**user)
     # Otherwise, assume it's a username (search by username)
     elif isinstance(identifier, str):
         for user in db.values():
             if user["username"] == identifier:
-                return UserInDB(**user)
+                return User(**user)
     return None
 
 
@@ -115,7 +115,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user = await get_user(fake_users_db, user_id=user_id)
+    user = get_user(fake_users_db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     if not user.is_active:
