@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import List
 from uuid import UUID
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi import status
 
 from app.models import User 
 from app.product_model import Product, CreateProductRequest, UpdateProductRequest
@@ -29,11 +30,18 @@ products_db = {
 }
 
 # Create product (only admin)
+from fastapi import HTTPException
+
 @router.post("/products", response_model=Product)
 async def create_product(product: CreateProductRequest, current_admin: User = Depends(get_current_admin)):
+    for existing_product in products_db.values():
+        if existing_product['name'].lower() == product.name.lower():
+            raise HTTPException(status_code=400, detail="Product already exists")
+    
     new_product = Product(**product.dict(), created_at=datetime.now(), updated_at=datetime.now())
     products_db[new_product.id] = new_product.dict()
     return new_product
+
 
 # Get all products
 @router.get("/products", response_model=List[Product])
@@ -54,6 +62,11 @@ async def update_product(product_id: UUID, updated_data: UpdateProductRequest, c
     product = products_db.get(product_id)
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
+   
+    if updated_data.name:
+        for existing_product_id, existing_product in products_db.items():
+            if existing_product_id != product_id and existing_product['name'].lower() == updated_data.name.lower():
+                raise HTTPException(status_code=400, detail="A product with this name already exists")
 
     update_data = updated_data.dict(exclude_unset=True)
     for key, value in update_data.items():
@@ -62,9 +75,8 @@ async def update_product(product_id: UUID, updated_data: UpdateProductRequest, c
     return product
 
 # Delete product by ID (only admin )
-@router.delete("/products/{product_id}", response_model=Product)
+@router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_product(product_id: UUID, current_admin: User = Depends(get_current_admin)):
     product = products_db.pop(product_id, None)
     if product is None:
         raise HTTPException(status_code=404, detail="Product not found")
-    return product
