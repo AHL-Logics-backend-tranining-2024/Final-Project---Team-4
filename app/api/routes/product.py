@@ -30,7 +30,6 @@ products_db = {
 }
 
 # Create product (only admin)
-from fastapi import HTTPException
 
 @router.post("/products", response_model=Product)
 async def create_product(product: CreateProductRequest, current_admin: User = Depends(get_current_admin)):
