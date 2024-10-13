@@ -30,16 +30,16 @@ products_db = {
 }
 
 # Create product (only admin)
-
 @router.post("/products", response_model=Product)
 async def create_product(product: CreateProductRequest, current_admin: User = Depends(get_current_admin)):
     for existing_product in products_db.values():
         if existing_product['name'].lower() == product.name.lower():
             raise HTTPException(status_code=400, detail="Product already exists")
     
-    new_product = Product(**product.dict(), created_at=datetime.now(), updated_at=datetime.now())
+    new_product = Product(**product.dict(), created_at=datetime.now())
     products_db[new_product.id] = new_product.dict()
     return new_product
+
 
 
 # Get all products
