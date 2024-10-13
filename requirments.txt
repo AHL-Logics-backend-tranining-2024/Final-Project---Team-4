@@ -3,3 +3,5 @@ pydantic-settings
 passlib
 uvicorn
 python-jose[cryptography]
+sqlmodel
+psycopg2-binary

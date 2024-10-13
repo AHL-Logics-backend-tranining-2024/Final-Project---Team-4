@@ -1,131 +1,75 @@
-from datetime import date, datetime
-import re
-from typing import ClassVar, Dict, List
-from uuid import UUID
-from pydantic import BaseModel, EmailStr, ValidationError, Field, field_validator
-from pydantic_settings import BaseSettings
+from decimal import Decimal
+from sqlalchemy import Column, Numeric
+from sqlmodel import SQLModel, Field, Relationship
+from uuid import UUID, uuid4
+from datetime import datetime
+from pydantic import EmailStr
+from typing import List, Optional  # Importing List and Optional for compatibility
 
-
-# **************** Auth Models ***************
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class TokenData(BaseModel):
-    user_id: UUID | None = None
-
-
-class User(BaseModel):
-    user_id: UUID
-    username: str
-    email: EmailStr
-    is_active: bool = Field(default=True)
+# User Model
+class User(SQLModel, table=True):
+    __tablename__ = "users"
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    username: str = Field(nullable=False)
+    email: EmailStr = Field(nullable=False, unique=True)
+    hashed_password: str = Field(nullable=False)
     is_admin: bool = Field(default=False)
-    created_at: datetime
-    updated_at: datetime | None = None
-    hashed_password: str
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default=None, nullable=True)  # Using Optional
 
+    # One-to-Many relationship with orders
+    orders: List["Order"] = Relationship(back_populates="user")  # Changed to List
 
-class Settings(BaseSettings):
-    secret_key: str = Field(..., env="SECRET_KEY")
-    access_token_expire_minutes: int = Field(30, env="ACCESS_TOKEN_EXPIRE_MINUTES")
+class Product(SQLModel, table=True):
+    __tablename__ = "products"
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    name: str = Field(nullable=False)
+    description: Optional[str] = None  # Using Optional
+    price: Decimal = Field(sa_column=Column(Numeric(10, 2), nullable=False))
+    stock: int = Field(default=0)
+    is_available: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        env_file = ".env"
+    # One-to-Many relationship with OrderProduct
+    order_products: List["OrderProduct"] = Relationship(back_populates="product")  # Changed to List
 
-    _instance: ClassVar = None
+class Order(SQLModel, table=True):
+    __tablename__ = "orders"
 
-    # This method implements the Singleton pattern.
-    # It ensures that only one instance of the Settings class is created and reused
-    # throughout the application, preventing the reloading of environment variables
-    # multiple times
-    @staticmethod
-    def get_instance():
-        if Settings._instance is None:
-            Settings._instance = Settings()
-        return Settings._instance
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_id: Optional[UUID] = Field(foreign_key="users.id", nullable=True)  # Using Optional
+    status_id: Optional[UUID] = Field(foreign_key="order_status.id", nullable=True)  # Using Optional
+    total_price: Decimal = Field(sa_column=Column(Numeric(10, 2), nullable=False))
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default=None, nullable=True)  # Using Optional
 
+    # Many-to-One relationships
+    user: Optional["User"] = Relationship(back_populates="orders")  # Using Optional
+    status: Optional["OrderStatus"] = Relationship(back_populates="orders")  # Using Optional
+    order_products: List["OrderProduct"] = Relationship(back_populates="order")  # Changed to List
 
-# ******************* User Models *******************
+class OrderStatus(SQLModel, table=True):
+    __tablename__ = "order_status"
 
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    name: str = Field(nullable=False, unique=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default=None, nullable=True)  # Using Optional
 
-def validate_password(value: str) -> str:
-    errors = []
-    if len(value) < 8:
-        errors.append("Password must be at least 8 characters long.")
-    if not re.search(r"[a-z]", value):
-        errors.append("Password must include at least one lowercase letter.")
-    if not re.search(r"[A-Z]", value):
-        errors.append("Password must include at least one uppercase letter.")
-    if not re.search(r"\d", value):
-        errors.append("Password must include at least one number.")
-    if not re.search(r"[@$!%*?&]", value):
-        errors.append("Password must include at least one special character.")
+    # One-to-Many relationship with orders
+    orders: List[Order] = Relationship(back_populates="status")  # Changed to List
 
-    if errors:
-        raise ValueError(" ".join(errors))
-    return value
+class OrderProduct(SQLModel, table=True):
+    __tablename__ = "order_product"
 
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    order_id: UUID = Field(foreign_key="orders.id", nullable=False)
+    product_id: Optional[UUID] = Field(foreign_key="products.id", nullable=True)  # Using Optional
+    quantity: int = Field(nullable=False, default=1)  # Default quantity set to 1
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default=None, nullable=True)  # Using Optional
 
-class CreateUserRequest(BaseModel):
-    username: str
-    email: EmailStr
-    password: str = Field(...)
-
-    @field_validator("password")
-    def validate_password_field(cls, value):
-        return validate_password(value)
-
-
-class CreateUserResponse(BaseModel):
-    id: UUID
-    username: str
-    email: EmailStr
-    is_admin: bool
-    is_active: bool
-    created_at: datetime
-
-
-class GetUserDetailsResponse(CreateUserResponse):
-    updated_at: datetime
-    links: List[Dict[str, str]] = []  # HATEOAS links
-
-
-    @classmethod
-    def create_hateoas_links(cls, user_id: UUID):
-        return [
-            {"rel": "self", "href": f"api/v1/users/{user_id}"},
-            {"rel": "update", "href": f"api/v1/users/{user_id}"},
-            {"rel": "delete", "href": f"api/v1/users/{user_id}"},
-        ]
-
-
-class UpdateUserDetailsResponse(CreateUserResponse):
-    updated_at: datetime
-    links: List[Dict[str, str]] = []  # HATEOAS links
-
-    @classmethod
-    def create_hateoas_links(cls, user_id: UUID):
-        return [
-            {"rel": "self", "href": f"api/v1/users/{user_id}"},
-            {"rel": "get", "href": f"api/v1/users/{user_id}"},
-            {"rel": "delete", "href": f"api/v1/users/{user_id}"},
-        ]
-
-
-class UpdateUserRequest(BaseModel):
-    username: str | None = None
-    email: EmailStr | None = None
-    password: str = Field(None)
-
-    @field_validator("password")
-    def validate_password_field(cls, value):
-        # Only validate if a password is provided
-        if value:
-            return validate_password(value)
-        return None
-
-class ChangeRoleRequest(BaseModel):
-    id : UUID
-    is_admin: bool
+    # Many-to-One relationships
+    order: Order = Relationship(back_populates="order_products")
+    product: Optional[Product] = Relationship(back_populates="order_products")  # Using Optional
