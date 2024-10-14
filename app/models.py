@@ -58,7 +58,7 @@ class OrderStatus(SQLModel, table=True):
     updated_at: Optional[datetime] = Field(default=None, nullable=True)  
 
     # One-to-Many relationship with orders
-    orders: List[Order] = Relationship(back_populates="status") 
+    orders: List[Order] = Relationship(back_populates="order_status") 
 
 class OrderProduct(SQLModel, table=True):
     __tablename__ = "order_product"

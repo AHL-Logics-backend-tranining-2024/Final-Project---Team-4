@@ -1,8 +1,10 @@
 from datetime import datetime
 from typing import List
 from uuid import UUID, uuid4
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlmodel import Session
 from app.api.dependencies import get_current_admin, get_current_user
+from app.database import get_session
 from app.models import User
 from app.schemas.user_schema import (
     GetUserDetailsResponse,
@@ -12,69 +14,26 @@ from app.schemas.user_schema import (
     UpdateUserDetailsResponse,
     UpdateUserRequest,
     )
+from app.services.user_services import UserService
 from app.utils.security import get_password_hash
 
 
 router = APIRouter()
 
-fake_users_db = {
-    UUID("123e4567-e89b-12d3-a456-426614174000"): {
-        "user_id": UUID("123e4567-e89b-12d3-a456-426614174000"),
-        "username": "johndoe",
-        "full_name": "John Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "is_active": True,
-        "is_admin": False,
-        "created_at": "2024-09-01 10:00:00",
-        "updated_at": "2024-09-01 12:00:00",
-    },
-    UUID("223e4567-e89b-12d3-a456-426614174001"): {
-        "user_id": UUID("223e4567-e89b-12d3-a456-426614174001"),
-        "username": "adminuser",
-        "full_name": "Admin User",
-        "email": "admin@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "is_active": True,
-        "is_admin": True,
-        "created_at": "2024-09-02 11:00:00",
-        "updated_at": "2024-09-02 14:00:00",
-    },
-}
-
-
 # Get All Users Endpoint
-@router.get("",
+@router.get("/",
     response_model=List[GetUserDetailsResponse],
     status_code=status.HTTP_200_OK,
 )
 async def get_all_users(
-    current_admin: User = Depends(get_current_admin), skip: int = 0, limit: int = 10
+    current_admin: User = Depends(get_current_admin), skip: int = 0, limit: int = 10,order_by: str = Query("id"),
+    session: Session = Depends(get_session) 
+
 ):
-    try:
-        # Extract user details for the response
-        users = [
-
-            {
-                "id": user["user_id"],
-                "username": user["username"],
-                "email": user["email"],
-                "is_admin": user["is_admin"],
-                "is_active": user["is_active"],
-                "created_at": user["created_at"],
-                "updated_at": user["updated_at"],
-                "links": GetUserDetailsResponse.create_hateoas_links(user["user_id"])
-            }
-            for user in fake_users_db.values()
-        ]
-        paginated_users = users[skip : skip + limit]
-
-        return paginated_users
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error retrieving users.",
-        )
+    user_service = UserService(session)
+    users = user_service.get_users(skip=skip, limit=limit, order_by=order_by)
+    return users
+    
 
 
 #  create user
