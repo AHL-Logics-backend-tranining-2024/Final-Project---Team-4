@@ -5,11 +5,13 @@ from app.settings import Settings
 settings = Settings.get_instance()
 engine = create_engine(settings.database_url)
 
-def init_db():
+async def init_db():
     SQLModel.metadata.create_all(engine)
 
 def get_session():
     with Session(engine) as session:
         yield session
 
+async def close_db_connection():
+    engine.dispose()
 
