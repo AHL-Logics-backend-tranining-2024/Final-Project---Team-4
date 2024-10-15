@@ -26,50 +26,34 @@ router = APIRouter()
     status_code=status.HTTP_200_OK,
 )
 async def get_all_users(
-    current_admin: User = Depends(get_current_admin), skip: int = 0, limit: int = 10,order_by: str = Query("id"),
+    current_admin: User = Depends(get_current_admin), skip: int = 0, limit: int = 10,
     session: Session = Depends(get_session) 
 
 ):
     user_service = UserService(session)
-    users = user_service.get_users(skip=skip, limit=limit, order_by=order_by)
-    return users
+    try:
+      return user_service.get_users(skip=skip, limit=limit)
+    except HTTPException as http_exc:
+            raise http_exc
+    except Exception as e:
+        print("An error occurred while creating user:", e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred",
+        )
     
 
 
 #  create user
 @router.post("", response_model=CreateUserResponse, status_code=status.HTTP_201_CREATED)
-def create_user(user: CreateUserRequest):
+def create_user(user: CreateUserRequest ,
+                 session: Session = Depends(get_session) ):
+    user_service = UserService(session)
     try:
-        # Check if the email is already registered
-        for existing_user in fake_users_db.values():
-            if existing_user["email"] == user.email:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Email already registered",
-                )
-
-        hashed_password = get_password_hash(user.password)
-        # Create user record
-        user_id = uuid4()
-        new_user = User(
-            user_id=user_id,
-            username=user.username,
-            email=user.email,
-            hashed_password=hashed_password,
-            is_admin=False,
-            is_active=True,
-            created_at=datetime.now(),
-            updated_at=None,
-        )
-        fake_users_db[user_id] = new_user.__dict__
-        return CreateUserResponse(
-            id=user_id,
-            username=new_user.username,
-            email=new_user.email,
-            is_admin=new_user.is_admin,
-            is_active=new_user.is_active,
-            created_at=new_user.created_at,
-        )
+  # Create user record
+        return user_service.create_user()
+    except HTTPException as http_exc:
+            raise http_exc
     except Exception as e:
         print("An error occurred while creating user:", e)
         raise HTTPException(
@@ -80,7 +64,9 @@ def create_user(user: CreateUserRequest):
 
 # get user details
 @router.get("/{user_id}", response_model=GetUserDetailsResponse)
-def get_user_details(user_id: UUID, current_user: User = Depends(get_current_user)):
+def get_user_details(user_id: UUID, current_user: User = Depends(get_current_user),
+                      session: Session = Depends(get_session)):
+    user_service = UserService(session)
     # Let the user access if they are an admin, otherwise only allow access to their own resource
     if current_user.user_id != user_id and not current_user.get("is_admin", False):
         raise HTTPException(
@@ -88,23 +74,11 @@ def get_user_details(user_id: UUID, current_user: User = Depends(get_current_use
             detail="You are not allowed to access this resource",
         )
     try:
-        user = get_user(fake_users_db, user_id)
-        if user is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
-            )
-
-        links = GetUserDetailsResponse.create_hateoas_links(user_id)
-        return GetUserDetailsResponse(
-            id=user.user_id,
-            username=user.username,
-            email=user.email,
-            is_admin=user.is_admin,
-            is_active=user.is_active,
-            created_at=user.created_at,
-            updated_at=user.updated_at,
-            links=links,
-        )
+        user = user_service.get_user_by_id(user_id)
+        user.links = GetUserDetailsResponse.create_hateoas_links(user_id)
+        return user
+    except HTTPException as http_exc:
+        raise http_exc
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -116,16 +90,16 @@ def get_user_details(user_id: UUID, current_user: User = Depends(get_current_use
 @router.put("/change_role", status_code=status.HTTP_200_OK)
 def change_user_role(
     change_role_data: ChangeRoleRequest, 
-    current_admin: User = Depends(get_current_admin)
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session) 
 ):
+    user_service = UserService(session)
     try:
-        user_to_change = get_user(fake_users_db, change_role_data.id)
-        if not user_to_change:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="user not found"
-            )
+        user_to_change = user_service.get_user_by_id(change_role_data.id)
         user_to_change.is_admin = change_role_data.is_admin
         return {"message": "User role updated successfully."}
+    except HTTPException as http_exc:
+            raise http_exc
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -138,44 +112,28 @@ def update_user(
     user_id: UUID,
     update_data: UpdateUserRequest,
     current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session) 
+
 ):
+    user_service = UserService(session)
     # Ensure the authenticated user matches the requested user_id
     if current_user.user_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not allowed to update this resource",
+            detail="You are not allowed to update this resource")
+    try :
+        updated_user = user_service.update_user(user_id ,update_data)
+        updated_user.links = UpdateUserDetailsResponse.create_hateoas_links(user_id)
+        return update_user
+    except HTTPException as http_exc:
+            raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error updating user role.",
         )
 
-    if update_data.email:
-        for existing_user in fake_users_db.values():
-            if existing_user["email"] == update_data.email:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail="Email already registered",
-                )
-        current_user.email = update_data.email
-
-    if update_data.password:
-        hashed_password = get_password_hash(update_data.password)
-        current_user.hashed_password = hashed_password
-
-    if update_data.username:
-        current_user.username = update_data.username
-    current_user.updated_at = datetime.now()
-
-    fake_users_db[user_id] = current_user.__dict__
-    links = UpdateUserDetailsResponse.create_hateoas_links(user_id)
-
-    return UpdateUserDetailsResponse(
-            id=current_user.user_id,  # Include the ID explicitly
-            username=current_user.username,
-            email=current_user.email,
-            is_admin=current_user.is_admin,
-            is_active=current_user.is_active,
-            created_at=current_user.created_at,
-            updated_at=current_user.updated_at,
-            links=links
-        )
+   
 
 
 
