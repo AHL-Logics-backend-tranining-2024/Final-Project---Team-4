@@ -2,17 +2,18 @@ from datetime import datetime
 from typing import List
 from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
-
-from app.api.auth import get_current_admin, get_current_user, get_password_hash, get_user
-from app.models import (
+from app.api.dependencies import get_current_admin, get_current_user
+from app.models import User
+from app.schemas.user_schema import (
+    GetUserDetailsResponse,
     ChangeRoleRequest,
     CreateUserRequest,
     CreateUserResponse,
     UpdateUserDetailsResponse,
     UpdateUserRequest,
-    GetUserDetailsResponse,
-    User,
-)
+    )
+from app.utils.security import get_password_hash
+
 
 router = APIRouter()
 
