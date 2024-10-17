@@ -1,7 +1,9 @@
-app/__pycache__/
-app/api/__pycache__/
-app/api/routes/__pycache__/
-app/utils/__pycache__/
-app/services/__pycache__/
-app/schemas/__pycache__/
+app/_pycache_/
+app/api/_pycache_/
+app/api/routes/_pycache_/
+app/utils/_pycache_/
+app/services/_pycache_/
+app/schemas/_pycache_/
+app/api/env/
+env/
 .env
