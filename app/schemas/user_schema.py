@@ -52,14 +52,14 @@ class CreateUserResponse(BaseModel):
     created_at: datetime
 
     class Config:
-          from_attributes = True
+           orm_mode = True 
 
 class GetUserDetailsResponse(CreateUserResponse):
     updated_at: datetime
     links: List[Dict[str, str]] = []  # HATEOAS links
 
     class Config:
-         from_attributes = True
+          orm_mode = True 
 
 
     @classmethod
@@ -76,7 +76,7 @@ class UpdateUserDetailsResponse(CreateUserResponse):
     links: List[Dict[str, str]] = []  # HATEOAS links
 
     class Config:
-         from_attributes = True
+          orm_mode = True 
 
     @classmethod
     def create_hateoas_links(cls, user_id: UUID):
