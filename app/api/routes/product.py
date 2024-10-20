@@ -4,9 +4,9 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi import status
 
-from app.models import User 
-from app.product_model import Product, CreateProductRequest, UpdateProductRequest
-from app.api.auth import get_current_admin
+from app.api.dependencies import get_current_admin
+from app.models import User
+from app.schemas.product_schema import CreateProductRequest, Product, UpdateProductRequest 
 
 router = APIRouter()
 
