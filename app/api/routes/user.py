@@ -126,7 +126,7 @@ def update_user(
     try :
         updated_user = user_service.update_user(user_id ,update_data)
         updated_user.links = UpdateUserDetailsResponse.create_hateoas_links(user_id)
-        return update_user
+        return updated_user
     except HTTPException as http_exc:
             raise http_exc
     except Exception as e:
@@ -145,7 +145,7 @@ def list_user_orders(user_id: UUID,
     
     order_service = OrderService(session)
     if current_user.id != user_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or permission denied.")    
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed to access this resource.")    
     orders = order_service.get_orders_by_user(user_id)    
     if not orders:
         return []
@@ -159,7 +159,7 @@ def delete_user(user_id: UUID,
     
     user_service = UserService(session)    
     if current_user.id != user_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or permission denied.")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You are not allowed to access this resource")
     user = user_service.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
