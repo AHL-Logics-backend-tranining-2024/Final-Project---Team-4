@@ -51,7 +51,7 @@ def create_user(user: CreateUserRequest ,
     user_service = UserService(session)
     try:
   # Create user record
-        return user_service.create_user()
+        return user_service.create_user(user)
     except HTTPException as http_exc:
             raise http_exc
     except Exception as e:

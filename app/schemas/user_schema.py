@@ -53,6 +53,7 @@ class CreateUserResponse(BaseModel):
 
     class Config:
            orm_mode = True 
+           from_attributes=True
 
 class GetUserDetailsResponse(CreateUserResponse):
     updated_at: datetime
@@ -60,6 +61,7 @@ class GetUserDetailsResponse(CreateUserResponse):
 
     class Config:
           orm_mode = True 
+          from_attributes=True
 
 
     @classmethod
@@ -77,6 +79,7 @@ class UpdateUserDetailsResponse(CreateUserResponse):
 
     class Config:
           orm_mode = True 
+          from_attributes=True
 
     @classmethod
     def create_hateoas_links(cls, user_id: UUID):

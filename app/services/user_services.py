@@ -34,10 +34,11 @@ class UserService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Email already registered")
         hashed_password = get_password_hash(user.password)
+        print("hashed_password is :",hashed_password)
         db_user = models.User(id=uuid4(),
                             username=user.username,
                             email=user.email,
-                            password=hashed_password,
+                            hashed_password=hashed_password,
                             is_admin=False,
                             is_active=True,
                             created_at=datetime.now(),
