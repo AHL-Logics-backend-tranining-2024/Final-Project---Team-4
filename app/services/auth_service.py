@@ -18,7 +18,7 @@ class AuthService:
         return None
     
     def get_user_by_id(self, id: UUID) -> User | None:
-        user = self.session.exec(select(User).where(User.ID == id)).first()
+        user = self.session.exec(select(User).where(User.id == id)).first()
         if user :
             return user
         return None

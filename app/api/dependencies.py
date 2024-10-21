@@ -6,6 +6,8 @@ from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
+from sqlmodel import Session
+from app.database import get_session
 from app.models import User
 from app.services.auth_service import AuthService
 from app.settings import Settings
@@ -20,7 +22,8 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)] , session: Session = Depends(get_session)):
+    auth_service = AuthService(session)
     try:
         payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
         user_id = UUID(payload.get("sub"))
@@ -45,7 +48,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    user = AuthService.get_user_by_id(user_id)
+    user = auth_service.get_user_by_id(user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     if not user.is_active:
