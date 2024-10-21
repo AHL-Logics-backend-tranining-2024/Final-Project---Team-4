@@ -12,6 +12,15 @@ class UserService:
     def __init__(self, session: Session):
         self.session = session
 
+    def user_has_active_orders(self, user_id: UUID) -> bool:
+        return self.session.exec(select(models.Order).where(models.Order.user_id == user_id, models.Order.status == 'active')).first() is not None
+    
+
+    def delete_user(self, user: models.User):
+        self.session.delete(user)
+        self.session.commit()
+
+
     def check_email_exists(self, email: str) -> bool:
         existing_user = self.session.exec(select(models.User).where(models.User.email == email)).first()
         return existing_user is not None

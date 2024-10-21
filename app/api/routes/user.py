@@ -13,7 +13,9 @@ from app.schemas.user_schema import (
     CreateUserResponse,
     UpdateUserDetailsResponse,
     UpdateUserRequest,
+    UserOrdersResponse,
     )
+from app.services.order_services import OrderService
 from app.services.user_services import UserService
 from app.utils.security import get_password_hash
 
@@ -45,7 +47,7 @@ async def get_all_users(
 
 
 #  create user
-@router.post("", response_model=CreateUserResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=CreateUserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: CreateUserRequest ,
                  session: Session = Depends(get_session) ):
     user_service = UserService(session)
@@ -135,9 +137,34 @@ def update_user(
 
    
 
+#    List Orders for User Endpoint
+@router.get("/{user_id}/orders", response_model=List[UserOrdersResponse], status_code=status.HTTP_200_OK)
+def list_user_orders(user_id: UUID,
+                     session: Session = Depends(get_session),
+                     current_user: User = Depends(get_current_user)):
+    
+    order_service = OrderService(session)
+    if current_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or permission denied.")    
+    orders = order_service.get_orders_by_user(user_id)    
+    if not orders:
+        return []
+    return orders
 
+#    Delete User Endpoint
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: UUID, 
+                session: Session = Depends(get_session), 
+                current_user: User = Depends(get_current_user)):
+    
+    user_service = UserService(session)    
+    if current_user.id != user_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found or permission denied.")
+    user = user_service.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    if user_service.user_has_active_orders(user_id):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User has active orders and cannot be deleted.")
+    user_service.delete_user(user)
+    return None
 
-
-#    List Orders for User Endpoint  --------------------> to be implemented
-
-#    Delete User Endpoint           --------------------> to be implemented

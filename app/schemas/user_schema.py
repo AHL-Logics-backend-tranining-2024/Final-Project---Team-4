@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 import re
 from typing import ClassVar, Dict, List
 from uuid import UUID
@@ -105,3 +106,15 @@ class UpdateUserRequest(BaseModel):
 class ChangeRoleRequest(BaseModel):
     id : UUID
     is_admin: bool
+
+
+class UserOrdersResponse(BaseModel):
+    id: UUID
+    status: str
+    total_price: Decimal
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+        from_attributes=True
