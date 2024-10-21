@@ -1,81 +1,98 @@
 from datetime import datetime
 from typing import List
 from uuid import UUID
-from fastapi import APIRouter, HTTPException, Depends
-from fastapi import status
-
+from fastapi import APIRouter, HTTPException, Depends, status
+from sqlmodel import Session
 from app.api.dependencies import get_current_admin
+from app.database import get_session
+
 from app.models import User
-from app.schemas.product_schema import CreateProductRequest, Product, UpdateProductRequest 
+from app.schemas.product_schema import CreateProductRequest, Product, UpdateProductRequest
+from app.services.product_services import ProductService
 
 router = APIRouter()
 
-products_db = {
-    UUID("1e2d4567-e89b-12d3-a456-426614174000"): {
-        "id": UUID("1e2d4567-e89b-12d3-a456-426614174000"),
-        "name": "Product A",
-        "description": "Description of Product A",
-        "price": 100.0,
-        "created_at": datetime.now(),
-        "updated_at": datetime.now(),
-    },
-    UUID("2f3d4567-e89b-12d3-a456-426614174001"): {
-        "id": UUID("2f3d4567-e89b-12d3-a456-426614174001"),
-        "name": "Product B",
-        "description": "Description of Product B",
-        "price": 150.0,
-        "created_at": datetime.now(),
-        "updated_at": datetime.now(),
-    },
-}
-
 # Create product (only admin)
-@router.post("/products", response_model=Product)
-async def create_product(product: CreateProductRequest, current_admin: User = Depends(get_current_admin)):
-    for existing_product in products_db.values():
-        if existing_product['name'].lower() == product.name.lower():
-            raise HTTPException(status_code=400, detail="Product already exists")
-    
-    new_product = Product(**product.dict(), created_at=datetime.now())
-    products_db[new_product.id] = new_product.dict()
-    return new_product
-
-
+@router.post("/products", response_model=Product, status_code=status.HTTP_201_CREATED)
+async def create_product(
+    product: CreateProductRequest,
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session)
+):
+    product_service = ProductService(session)
+    try:
+        return product_service.create_product(product)
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while creating the product."
+        )
 
 # Get all products
-@router.get("/products", response_model=List[Product])
-async def get_products():
-    return list(products_db.values())
+@router.get("/products", response_model=List[Product], status_code=status.HTTP_200_OK)
+async def get_all_products(
+    skip: int = 0, limit: int = 10, session: Session = Depends(get_session)
+):
+    product_service = ProductService(session)
+    try:
+        return product_service.get_all_products(skip, limit)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching the products."
+        )
 
 # Get product by ID
-@router.get("/products/{product_id}", response_model=Product)
-async def get_product(product_id: UUID):
-    product = products_db.get(product_id)
-    if product is None:
-        raise HTTPException(status_code=404, detail="Product not found")
-    return product
+@router.get("/products/{product_id}", response_model=Product, status_code=status.HTTP_200_OK)
+async def get_product(
+    product_id: UUID, session: Session = Depends(get_session)
+):
+    product_service = ProductService(session)
+    try:
+        return product_service.get_product_by_id(product_id)
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while fetching the product."
+        )
 
 # Update product by ID (only admin)
-@router.put("/products/{product_id}", response_model=Product)
-async def update_product(product_id: UUID, updated_data: UpdateProductRequest, current_admin: User = Depends(get_current_admin)):
-    product = products_db.get(product_id)
-    if product is None:
-        raise HTTPException(status_code=404, detail="Product not found")
-   
-    if updated_data.name:
-        for existing_product_id, existing_product in products_db.items():
-            if existing_product_id != product_id and existing_product['name'].lower() == updated_data.name.lower():
-                raise HTTPException(status_code=400, detail="A product with this name already exists")
+@router.put("/products/{product_id}", response_model=Product, status_code=status.HTTP_200_OK)
+async def update_product(
+    product_id: UUID,
+    updated_data: UpdateProductRequest,
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session)
+):
+    product_service = ProductService(session)
+    try:
+        return product_service.update_product(product_id, updated_data)
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while updating the product."
+        )
 
-    update_data = updated_data.dict(exclude_unset=True)
-    for key, value in update_data.items():
-        product[key] = value 
-    product['updated_at'] = datetime.now()  
-    return product
-
-# Delete product by ID (only admin )
+# Delete product by ID (only admin)
 @router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_product(product_id: UUID, current_admin: User = Depends(get_current_admin)):
-    product = products_db.pop(product_id, None)
-    if product is None:
-        raise HTTPException(status_code=404, detail="Product not found")
+async def delete_product(
+    product_id: UUID, 
+    current_admin: User = Depends(get_current_admin),
+    session: Session = Depends(get_session)
+):
+    product_service = ProductService(session)
+    try:
+        product_service.delete_product(product_id)
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while deleting the product."
+        )

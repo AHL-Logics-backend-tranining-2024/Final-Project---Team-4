@@ -62,3 +62,5 @@ async def get_current_admin(current_user: Annotated[User, Depends(get_current_us
             status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )
     return current_user
+
+
