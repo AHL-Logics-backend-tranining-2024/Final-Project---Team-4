@@ -10,6 +10,11 @@ class OrderService:
     def _init_(self, session: Session):
         self.session = session
 
+    def get_orders_by_user(self, user_id: UUID):
+        orders = self.session.exec(select(Order).where(Order.user_id == user_id)).all()
+        return orders
+
+
     def create_order(self, order_data: CreateOrderRequest, user_id: UUID) -> OrderResponse:
         total_price = Decimal(0.0)
         order_products_data = []
