@@ -5,6 +5,12 @@ from uuid import UUID, uuid4
 from datetime import datetime
 from pydantic import EmailStr
 from typing import List, Optional 
+from sqlalchemy import Column, String, ForeignKey, DateTime, Numeric
+from sqlalchemy.orm import relationship
+
+from datetime import datetime
+from uuid import uuid4
+
 
 # User Model
 class User(SQLModel, table=True):
@@ -34,31 +40,33 @@ class Product(SQLModel, table=True):
     # One-to-Many relationship with OrderProduct
     order_products: List["OrderProduct"] = Relationship(back_populates="product")  
 
+
 class Order(SQLModel, table=True):
-    __tablename__ = "orders"
+    _tablename_ = "orders"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
-    user_id: Optional[UUID] = Field(foreign_key="users.id", nullable=True)  
-    status_id: Optional[UUID] = Field(foreign_key="order_status.id", nullable=True)  
+    user_id: Optional[UUID] = Field(foreign_key="users.id", nullable=True)
+    status_id: Optional[UUID] = Field(foreign_key="order_status.id", nullable=True)
     total_price: Decimal = Field(sa_column=Column(Numeric(10, 2), nullable=False))
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default=None, nullable=True)  
+    updated_at: Optional[datetime] = Field(default=None, nullable=True)
 
-    # Many-to-One relationships
-    user: Optional["User"] = Relationship(back_populates="orders")  
-    status: Optional["OrderStatus"] = Relationship(back_populates="orders")  
-    order_products: List["OrderProduct"] = Relationship(back_populates="order")  
+    # Relationships
+    user: Optional["User"] = Relationship(back_populates="orders")
+    status: Optional["OrderStatus"] = Relationship(back_populates="orders")
+    order_products: List["OrderProduct"] = Relationship(back_populates="order")
+
 
 class OrderStatus(SQLModel, table=True):
-    __tablename__ = "order_status"
+    _tablename_ = "order_status"
 
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     name: str = Field(nullable=False, unique=True)
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default=None, nullable=True)  
+    updated_at: Optional[datetime] = Field(default=None, nullable=True)
 
-    # One-to-Many relationship with orders
-    orders: List[Order] = Relationship(back_populates="order_status") 
+    # علاقة One-to-Many مع الطلبات
+    orders: List["Order"] = Relationship(back_populates="order_status")
 
 class OrderProduct(SQLModel, table=True):
     __tablename__ = "order_product"
