@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 import re
 from typing import ClassVar, Dict, List
 from uuid import UUID
@@ -53,6 +54,7 @@ class CreateUserResponse(BaseModel):
 
     class Config:
            orm_mode = True 
+           from_attributes=True
 
 class GetUserDetailsResponse(CreateUserResponse):
     updated_at: datetime
@@ -60,6 +62,7 @@ class GetUserDetailsResponse(CreateUserResponse):
 
     class Config:
           orm_mode = True 
+          from_attributes=True
 
 
     @classmethod
@@ -77,6 +80,7 @@ class UpdateUserDetailsResponse(CreateUserResponse):
 
     class Config:
           orm_mode = True 
+          from_attributes=True
 
     @classmethod
     def create_hateoas_links(cls, user_id: UUID):
@@ -102,3 +106,15 @@ class UpdateUserRequest(BaseModel):
 class ChangeRoleRequest(BaseModel):
     id : UUID
     is_admin: bool
+
+
+class UserOrdersResponse(BaseModel):
+    id: UUID
+    status: str
+    total_price: Decimal
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+        from_attributes=True
