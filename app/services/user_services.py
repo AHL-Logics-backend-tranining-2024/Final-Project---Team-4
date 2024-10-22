@@ -12,6 +12,15 @@ class UserService:
     def __init__(self, session: Session):
         self.session = session
 
+    def user_has_active_orders(self, user_id: UUID) -> bool:
+        return self.session.exec(select(models.Order).where(models.Order.user_id == user_id, models.Order.status == 'active')).first() is not None
+    
+
+    def delete_user(self, user: models.User):
+        self.session.delete(user)
+        self.session.commit()
+
+
     def check_email_exists(self, email: str) -> bool:
         existing_user = self.session.exec(select(models.User).where(models.User.email == email)).first()
         return existing_user is not None
@@ -34,10 +43,11 @@ class UserService:
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Email already registered")
         hashed_password = get_password_hash(user.password)
+        print("hashed_password is :",hashed_password)
         db_user = models.User(id=uuid4(),
                             username=user.username,
                             email=user.email,
-                            password=hashed_password,
+                            hashed_password=hashed_password,
                             is_admin=False,
                             is_active=True,
                             created_at=datetime.now(),
