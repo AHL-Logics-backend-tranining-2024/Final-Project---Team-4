@@ -65,7 +65,7 @@ class OrderStatus(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = Field(default=None, nullable=True)
 
-    # علاقة One-to-Many مع الطلبات
+    
     orders: List["Order"] = Relationship(back_populates="order_status")
 
 class OrderProduct(SQLModel, table=True):
