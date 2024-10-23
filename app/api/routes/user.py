@@ -15,7 +15,7 @@ from app.schemas.user_schema import (
     UpdateUserRequest,
     UserOrdersResponse,
     )
-from app.services.order_services import OrderService
+from app.services.order_service import OrderService
 from app.services.user_services import UserService
 from app.utils.security import get_password_hash
 
