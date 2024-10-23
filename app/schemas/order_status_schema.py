@@ -12,7 +12,7 @@ class OrderStatusResponse(BaseModel):
     id: UUID
     name: str
     created_at: datetime
-    updated_at: datetime
+    updated_at: datetime | None = None
 
     class Config:
         orm_mode = True

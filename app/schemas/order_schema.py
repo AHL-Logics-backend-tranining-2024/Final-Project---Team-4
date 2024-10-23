@@ -21,7 +21,7 @@ class OrderResponse(BaseModel):
     total_price: Decimal
     created_at: datetime
     updated_at: Optional[datetime] = None
-    products: List[dict]
+    products: List[OrderProduct]
 
     class Config:
         orm_mode = True

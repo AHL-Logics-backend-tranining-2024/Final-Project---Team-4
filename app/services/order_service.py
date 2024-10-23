@@ -25,7 +25,8 @@ class OrderService:
                 raise HTTPException(status_code=404, detail="Product not found or unavailable")
             if item.quantity > product.stock:
                 raise HTTPException(status_code=400, detail="Not enough stock for the product")
-
+            
+            product.stock -= item.quantity
             total_price += product.price * item.quantity
             order_products_data.append(OrderProduct(product_id=product.id, quantity=item.quantity))
 
